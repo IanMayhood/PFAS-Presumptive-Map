@@ -7,11 +7,45 @@ output: html_document
 
 ```{r setup, include=FALSE}
 install.packages("sf")
+install.packages("tidyverse")
 library(sf)
+library(dplyr)
 x <- c(1,2,3)
 ```
 
+# Airports Code
+```{r}
+getwd()
 
-hello
+setwd("../")
 
-Hello :)
+getwd()
+
+airport_data <- read.csv("Airport Data PFAS.csv")
+
+View(airport_data)
+
+transform(airport_data) 
+
+colnames(airport_data)[3] <- "IATA"
+
+airport_coords_data <- read.csv("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat", header = FALSE)
+
+View(airport_coords_data)
+
+colnames(airport_coords_data) <- c("Airport_ID", "Name", "City", "Country", "IATA", "ICAO", "Latitude", "Longitude", "Altitude", "Timezone", "DST", "Tz_database_timezone", "Type", "Source")
+
+airport_merged_data <- merge(airport_data, airport_coords_data, by.x= "IATA")
+
+View(airport_merged_data)
+
+library(ggplot2)
+
+ggplot(data = airport_merged_data) +
+  borders("world", colour = "gray50", fill = "gray50") +   
+  geom_point(aes(x = Longitude, y = Latitude, color = "red")) +   
+  theme_minimal() +  
+  labs(title = "Airport Locations", x = "Longitude", y = "Latitude")
+
+
+```
