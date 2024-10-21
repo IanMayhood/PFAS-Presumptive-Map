@@ -6,47 +6,72 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-install.packages("sf")
 install.packages("tidyverse")
-library(sf)
+install.packages("googledrive")
+install.packages("leaflet")
 library(dplyr)
-x <- c(1,2,3)
+library(readxl)
+library(googledrive)
+library(leaflet)
 ```
 
-# Airports Code
 ```{r}
-getwd()
+getwd() 
+setwd("../") 
+getwd() 
+register_google("AIzaSyD34JAuWfbwEx-Xwu3bEFS2VMn9TUAuRbA") 
 
-setwd("../")
+# Federal Sites Data Download
+fed_sites_url <- "https://docs.google.com/spreadsheets/d/185fyZt0ObIO15QNcXslj05kxrDYWpeSw/edit?usp=sharing"
+drive_download(as_id(fed_sites_url), path = "Federal Sites_EPA PFAS Analytic Tools.xlsx", overwrite = TRUE)
+federal_sites <- read_excel("Federal Sites_EPA PFAS Analytic Tools.xlsx")
 
-getwd()
+# Industry Sites Data Download
+ind_sites_url <- "https://docs.google.com/spreadsheets/d/1LB50bDBlF3ezXtctJ-Af6U10rlQKWUsO/edit?usp=sharing"
+drive_download(as_id(ind_sites_url), path = "Industry Sectors_EPA PFAS Analytic Tools.xlsx", overwrite = TRUE)
+industry_sites <- read_excel("Industry Sectors_EPA PFAS Analytic Tools.xlsx")
 
-airport_data <- read.csv("Airport Data PFAS.csv")
+# Superfund Sites Data Download
+superfund_sites_url <- "https://docs.google.com/spreadsheets/d/1ZiqIqWQtWQ6lgprLHrnowjxXo_ikF9Pm/edit?usp=sharing"
+drive_download(as_id(superfund_sites_url), path = "Superfund Sites_EPA PFAS Analytic Tools.xlsx", overwrite = TRUE)
+superfund_sites <- read_excel("Superfund Sites_EPA PFAS Analytic Tools.xlsx")
 
-View(airport_data)
+# Production Sites Data Download
+prod_sites_url <- "https://docs.google.com/spreadsheets/d/1cbTk7RtdkpO-exOlFyps7IG5e0r-h1u0/edit?usp=sharing"
+drive_download(as_id(prod_sites_url), path = "Production_EPA PFAS Analytic Tools.xlsx", overwrite = TRUE)
+production_sites <- read_excel("Production_EPA PFAS Analytic Tools.xlsx")
+  production_sites$Longitude <- as.numeric(production_sites$Longitude) 
+  production_sites$Latitude <- as.numeric(production_sites$Latitude) 
 
-transform(airport_data) 
-
-colnames(airport_data)[3] <- "IATA"
-
-airport_coords_data <- read.csv("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat", header = FALSE)
-
-View(airport_coords_data)
-
-colnames(airport_coords_data) <- c("Airport_ID", "Name", "City", "Country", "IATA", "ICAO", "Latitude", "Longitude", "Altitude", "Timezone", "DST", "Tz_database_timezone", "Type", "Source")
-
-airport_merged_data <- merge(airport_data, airport_coords_data, by.x= "IATA")
-
-View(airport_merged_data)
-
-library(ggplot2)
-
-ggplot(data = airport_merged_data) +
-  borders("world", colour = "gray50", fill = "gray50") +   
-  geom_point(aes(x = Longitude, y = Latitude, color = "red")) +   
-  theme_minimal() +  
-  labs(title = "Airport Locations", x = "Longitude", y = "Latitude")
-
-
+# Create an interactive map with leaflet
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  setView(lng = -95.7129, lat = 37.0902, zoom = 4) %>%
+# Industry Sites
+  addCircleMarkers(data = industry_sites, 
+                   lng = ~Longitude, lat = ~Latitude, 
+                   color = "pink", radius = 4, group = "Industry Sites", 
+                   popup = ~paste0("Industry Site: ", Facility)) %>%
+# Federal Sites
+  addCircleMarkers(data = federal_sites, 
+                   lng = ~Longitude, lat = ~Latitude, 
+                   color = "red", radius = 4, group = "Federal Sites", 
+                   popup = ~paste0("Federal Site: ", `Site Name`)) %>%
+# Superfund (CERCLA) Sites
+  addCircleMarkers(data = superfund_sites, 
+                   lng = ~Longitude, lat = ~Latitude, 
+                   color = "blue", radius = 4, group = "Superfund Sites", 
+                   popup = ~paste0("Superfund Site: ", `Site Name`)) %>%
+# Production Sites
+  addCircleMarkers(data = production_sites, 
+                   lng = ~Longitude, lat = ~Latitude, 
+                   color = "green", radius = 4, group = "Production Sites", 
+                   popup = ~paste0("Production Site: ", `Facility Name`)) %>%
+# Allows toggling of groups
+  addLayersControl(
+    overlayGroups = c("Industry Sites", "Federal Sites", "Superfund Sites", "Production Sites"),
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+# Hides Industry Sites by default (for clarity)
+  hideGroup("Industry Sites")
 ```
-
